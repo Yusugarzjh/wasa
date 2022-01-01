@@ -22,7 +22,7 @@ uint8_t buff[64*1024] = { 0 };
 BluetoothSerial SerialBT;
 String name = "ESP32test";
 bool connected;
-int a;
+int a,b=0;
 String httpGETRequest(const char *serverName);
 void initback()        // initialize background
 {
@@ -56,7 +56,7 @@ void initback()        // initialize background
 }
 
   void wemenu()     //welcome menu
-  {
+  {b=0;
     M5.Lcd.clear();
     M5.Lcd.setTextColor(GREEN,BLACK);
     m5.Lcd.setCursor(50,110);
@@ -70,6 +70,7 @@ void initback()        // initialize background
 void menu()        //menu
   {
     int i=1,j=1,k=1,o=1,p=1;
+    
     wemenu();
     M5.Lcd.clear();
     M5.Lcd.fillScreen(WHITE);
@@ -153,6 +154,40 @@ void menu()        //menu
   {
       M5.Lcd.fillScreen(BLACK);  
   }
+void xTaskOne(void *xTask1)
+{
+  while (1)
+
+  {   
+    delay(500);
+      if(b==1)
+      {
+              String inString="";
+              
+          while (SerialBT.available()) {
+            char inChar = (char)SerialBT.read();
+            if(inChar=='\n')
+              break;
+            inString += inChar;
+            
+        delay(100);
+          }
+           M5.Lcd.fillRect(140,185,150,50,BLACK);
+          if(inString!="")
+          {   
+            M5.Lcd.setTextSize(1);
+            m5.Lcd.setCursor(140,220);
+            M5.Lcd.print(inString); 
+            M5.Lcd.print("*C"); 
+            Serial.print(inString);
+          } 
+          else
+          Serial.print("error");
+          delay(10);
+         
+       }
+  }
+}
 void vbutton()
   {
   M5.Lcd.setTextColor(GREEN,BLACK);
@@ -177,17 +212,18 @@ void vbutton2()
     void vbutton3()
  {
   M5.Lcd.setTextSize(3);
-  m5.Lcd.setCursor(120,130);
-  M5.Lcd.fillCircle(147,118,50, random(0xFFFF));
+  m5.Lcd.setCursor(127,150);
+  M5.Lcd.fillCircle(160,120,50, random(0xFFFF));
   M5.Lcd.print("☀");
  }
  void part1()
   {
      TouchPoint_t pos= M5.Touch.getPressPoint(); 
     if (pos.x>20&&pos.x<120&&pos.y>20&&pos.y<80)
-    {
+    { b=1;
        reset();
       vbutton();
+     
       while(1)
       {
         TouchPoint_t pos= M5.Touch.getPressPoint();
@@ -243,33 +279,38 @@ void part3()
   {
      TouchPoint_t pos= M5.Touch.getPressPoint(); 
     if (pos.x>20&&pos.x<120&&pos.y>160&&pos.y<240)
-    {
+    {int d=0;
          reset();
       vbutton3();
       while(1)
       {
-            m5.update();
-      if (M5.BtnB.wasReleased())
-    {
-      Serial.print('o');
-
-
-      
-    }
-     else if (M5.BtnA.wasReleased())
-    {
-      menu();
-      Serial.print('m');
-    }
+            TouchPoint_t pos= M5.Touch.getPressPoint();
+         if (pos.x>110&&pos.x<210&&pos.y<170&&pos.y>70)
+          {
+                if(d%2==0){
+                SerialBT.print("D");
+                  Serial.print("D");}
+                  else if (d%2==1){
+                SerialBT.print("G");
+                  Serial.print("G");}
+                  d++;
+                 
+                        delay(300);
+          }
+          if (pos.x<100&&pos.y>240)
+            {
+                menu();
+                Serial.print('m');
+              }
         }
     }
   }
  void part4()
   {
-      Serial.println("cam");
+     
      TouchPoint_t pos= M5.Touch.getPressPoint(); 
     if (pos.x>180&&pos.x<360&&pos.y>160&&pos.y<240)
-    {
+    { Serial.println("cam");
          reset();
       while(1)
       {
@@ -284,7 +325,6 @@ void part3()
           
                   // configure server and url
                   http.begin("http://192.168.4.1/saved-photo");
-                  //http.begin("192.168.1.12", 80, "/test.html");
           
                   USE_SERIAL.print("[HTTP] GET...\n");
                   // start connection and send HTTP header
@@ -337,15 +377,13 @@ void part3()
                   http.end();
               }
            M5.Lcd.drawJpg(buff,len,80,60);
-            delay(1000);
-
- 
-  if (pos.x<100&&pos.y>240)
+           pos= M5.Touch.getPressPoint();
+         if (pos.x<100&&pos.y>240)
         {
             menu();
             Serial.print('m');
           }
-
+         delay(1000);
         }
     }
   }  
@@ -354,10 +392,6 @@ void setup() {
 
   M5.begin();
         M5.lcd.setBrightness(255);
-// M5.Lcd.fillScreen(WHITE);
-    USE_SERIAL.println();
-    USE_SERIAL.println();
-    USE_SERIAL.println();
   M5.Lcd.setFreeFont(&unicode_24px);//设置要使用的GFX字体（#include "CUF_24px.h"）
   M5.Lcd.setTextDatum(TC_DATUM);//设置文本对齐方式为居中向上对齐
   M5.Lcd.setTextColor(GREEN,WHITE); 
@@ -372,27 +406,28 @@ void setup() {
 
 
   initback();
-//  SerialBT.begin("m5stacktest", true);
-//        Serial.println("The device started in master mode, make sure remote BT device is on!");
-//        connected = SerialBT.connect(name);
-//        if (connected)
-//        {
-//            Serial.println("Connected Succesfully!");
-//        }
-//        else
-//        {
-//            while (!SerialBT.connected(10000))
-//            {
-//                Serial.println("Failed to connect. Make sure remote device is available and in range, then restart app.");
-//            }
-//        }
-//        //   disconnect() may take upto 10 secs max
-//        if (SerialBT.disconnect())
-//        {
-//            Serial.println("Disconnected Succesfully!");
-//        }
-//        // this would reconnect to the name(will use address, if resolved) or address used with connect(name/address).
-//        SerialBT.connect();
+  SerialBT.begin("m5stacktest", true);
+        Serial.println("The device started in master mode, make sure remote BT device is on!");
+        connected = SerialBT.connect(name);
+        if (connected)
+        {
+            Serial.println("Connected Succesfully!");
+        }
+        else
+        {
+            while (!SerialBT.connected(10000))
+            {
+                Serial.println("Failed to connect. Make sure remote device is available and in range, then restart app.");
+            }
+        }
+        //   disconnect() may take upto 10 secs max
+        if (SerialBT.disconnect())
+        {
+            Serial.println("Disconnected Succesfully!");
+        }
+        // this would reconnect to the name(will use address, if resolved) or address used with connect(name/address).
+        SerialBT.connect();
+        xTaskCreatePinnedToCore(xTaskOne, "TaskOne", 4096, NULL, 1, NULL, 1);
 }
 
 void loop() {
